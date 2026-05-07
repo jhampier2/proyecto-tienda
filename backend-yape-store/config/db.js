@@ -2,16 +2,10 @@ const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    // AGREGA ESTO AQUÍ ABAJO:
-    ssl: {
-        rejectUnauthorized: false
-    }
+    host: 'mysql-118092dd-jortizvento-9349.b.aivencloud.com',
+    user: 'avnadmin',
+    password: 'TU_PASSWORD_REAL_AQUÍ',
+    database: 'defaultdb',
+    port: 28944,
+    ssl: { rejectUnauthorized: false }
 });
