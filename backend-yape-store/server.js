@@ -5,12 +5,22 @@ require('dotenv').config();
 const app = express();
 const apiRoutes = require('./routes/api');
 
-// Middlewares
+// 1. AJUSTE DE CORS: 
+// Permitimos que tu futuro link de Render (frontend) pueda consultar este backend.
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: '*', // Esto permite que cualquier origen se conecte (lo más seguro para evitar errores de bloqueo ahora)
     credentials: true
 }));
+
 app.use(express.json());
+
+// 2. LA JUGADA MAESTRA (Redirección):
+// Cuando el profesor abra el link del backend que le enviaste,
+// lo mandaremos automáticamente a la página visual (frontend).
+app.get('/', (req, res) => {
+    // Reemplaza el link de abajo por el link que te dé Render en el Static Site
+    res.redirect('https://tu-tienda-frontend.onrender.com'); 
+});
 
 // Usar las rutas
 app.use('/api', apiRoutes);
