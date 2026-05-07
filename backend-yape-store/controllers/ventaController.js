@@ -4,23 +4,20 @@ const db = require('../config/db');
 exports.procesarCompra = async (req, res) => {
     const { carrito, total, idCliente } = req.body;
     console.log('=== COMPRAR ===', { carritoLength: carrito?.length, total, idCliente });
-    
-    const idClienteReal = idCliente || 1; // Usar el ID del cliente logueado o default 1
+
+    const idClienteReal = idCliente || 1;
     const connection = await db.getConnection();
 
     try {
         await connection.beginTransaction();
-        
-        // Obtener el último ID y generar uno nuevo
-        const [maxIdResult] = await connection.query('SELECT MAX(id_venta) as maxId FROM ventas');
-        const nuevoId = (maxIdResult[0].maxId || 0) + 1;
-        
-        // Crear venta como Pendiente con el ID del cliente
-        await connection.query(
-            'INSERT INTO ventas (id_venta, id_cliente, total, metodo_pago, estado) VALUES (?, ?, ?, ?, ?)',
-            [nuevoId, idClienteReal, total, 'Yape', 'Pendiente']
+
+        // Usar AUTO_INCREMENT en lugar de MAX+1 para evitar race conditions
+        const [result] = await connection.query(
+            'INSERT INTO ventas (id_cliente, total, metodo_pago, estado) VALUES (?, ?, ?, ?)',
+            [idClienteReal, total, 'Yape', 'Pendiente']
         );
-        
+        const nuevoId = result.insertId;
+
         console.log('Venta creada con ID:', nuevoId);
 
         // Insertar detalles de venta
@@ -28,7 +25,7 @@ exports.procesarCompra = async (req, res) => {
             const precio = item.precio_oferta || item.precio;
             const cantidad = item.cantidad || 1;
             const subtotal = precio * cantidad;
-            
+
             await connection.query(
                 'INSERT INTO detalle_venta (id_venta, id_producto, cantidad, subtotal) VALUES (?, ?, ?, ?)',
                 [nuevoId, item.id_producto, cantidad, subtotal]
@@ -60,14 +57,14 @@ exports.procesarPagoFicticio = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        // Actualizar estado a Pagado
+        // ✅ CORREGIDO: parámetro ? en lugar de comillas dobles
         const [updateResult] = await connection.query(
-            'UPDATE ventas SET estado = "Pagado" WHERE id_venta = ?',
-            [idVenta]
+            'UPDATE ventas SET estado = ? WHERE id_venta = ?',
+            ['Pagado', idVenta]
         );
         console.log('Rows actualizados:', updateResult.affectedRows);
 
-        // Obtener detalles de la venta para actualizar stock
+        // Obtener detalles para actualizar stock
         const [detalles] = await connection.query(
             'SELECT id_producto, cantidad FROM detalle_venta WHERE id_venta = ?',
             [idVenta]
@@ -103,9 +100,13 @@ exports.procesarPagoFicticio = async (req, res) => {
 exports.consultarEstadoPago = async (req, res) => {
     const { idVenta } = req.params;
     try {
-        const [rows] = await db.query('SELECT estado FROM ventas WHERE id_venta = ?', [idVenta]);
+        const [rows] = await db.query(
+            'SELECT estado FROM ventas WHERE id_venta = ?',
+            [idVenta]
+        );
         if (rows.length > 0) {
-            return res.status(200).json(rows);
+            // ✅ CORREGIDO: devuelve objeto, no array
+            return res.status(200).json(rows[0]);
         } else {
             return res.status(404).json({ error: 'Venta no encontrada' });
         }
@@ -118,7 +119,11 @@ exports.consultarEstadoPago = async (req, res) => {
 exports.aprobarPagoYape = async (req, res) => {
     const { idVenta } = req.body;
     try {
-        await db.query('UPDATE ventas SET estado = "Pagado" WHERE id_venta = ?', [idVenta]);
+        // ✅ CORREGIDO: parámetro ? en lugar de comillas dobles
+        await db.query(
+            'UPDATE ventas SET estado = ? WHERE id_venta = ?',
+            ['Pagado', idVenta]
+        );
         res.json({ mensaje: `Pago aprobado para la venta ${idVenta}` });
     } catch (error) {
         res.status(500).json({ error: 'Error al aprobar el pago' });
