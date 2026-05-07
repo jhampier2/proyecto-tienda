@@ -19,7 +19,7 @@ app.use(express.json());
 // lo mandaremos automáticamente a la página visual (frontend).
 app.get('/', (req, res) => {
     // Reemplaza el link de abajo por el link que te dé Render en el Static Site
-    res.redirect('https://tu-tienda-frontend.onrender.com'); 
+    res.redirect('https://yape-store-web.onrender.com'); 
 });
 
 // Usar las rutas
