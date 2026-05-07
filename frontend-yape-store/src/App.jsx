@@ -4,6 +4,9 @@ import { UBIGEO_PERU } from './ubigeo';
 import './App.css';
 
 function App() {
+  // ─── BASE URL DEL BACKEND EN RENDER ───────────────────────────────────────
+  const API_URL = 'https://proyecto-tienda-7anu.onrender.com/api';
+
   const [productos, setProductos] = useState([]);
   const [carrito, setCarrito] = useState(() => {
     const saved = localStorage.getItem('carrito-yape');
@@ -37,7 +40,7 @@ function App() {
   const [provincia, setProvincia] = useState('');
   const [distrito, setDistrito] = useState('');
   const [notificaciones, setNotificaciones] = useState([]);
-  
+
   // Auth state
   const [usuario, setUsuario] = useState(() => {
     try {
@@ -69,15 +72,13 @@ function App() {
     if (!Array.isArray(productos) || productos.length === 0) {
       return [{ id_categoria: 'todas', descripcion: 'Todas' }];
     }
-    // Obtener categorías que tienen al menos un producto
     const categoriasConProd = new Set();
     productos.forEach(p => {
       if (p.id_categoria) {
         categoriasConProd.add(p.id_categoria);
       }
     });
-    // Filtrar las categorías del estado
-    return categorias.filter(cat => 
+    return categorias.filter(cat =>
       cat.id_categoria === 'todas' || categoriasConProd.has(cat.id_categoria)
     );
   }, [categorias, productos]);
@@ -106,31 +107,28 @@ function App() {
     }
   }, [departamento, provincia]);
 
-  // Lógica de filtrado - usar useMemo para optimizar
+  // Lógica de filtrado
   const productosFiltrados = useMemo(() => {
     try {
       if (!Array.isArray(productos)) return [];
       let filtrados = [...productos];
-      
-// Filtrar por categoría
-    const catActive = String(categoriaActiva);
-    if (catActive !== 'todas') {
-      filtrados = filtrados.filter(p => 
-        p.categoria_nombre?.toLowerCase() === catActive.toLowerCase() || 
-        p.id_categoria?.toString() === catActive
-      );
-    }
-      
-      // Filtrar por búsqueda
+
+      const catActive = String(categoriaActiva);
+      if (catActive !== 'todas') {
+        filtrados = filtrados.filter(p =>
+          p.categoria_nombre?.toLowerCase() === catActive.toLowerCase() ||
+          p.id_categoria?.toString() === catActive
+        );
+      }
+
       if (busqueda) {
-        filtrados = filtrados.filter(p => 
+        filtrados = filtrados.filter(p =>
           p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
           p.descripcion?.toLowerCase().includes(busqueda.toLowerCase())
         );
       }
-      
-      // Ordenamiento
-      switch(ordenarPor) {
+
+      switch (ordenarPor) {
         case 'precio-asc':
           filtrados.sort((a, b) => (a.precio || 1) - (b.precio || 1));
           break;
@@ -143,7 +141,7 @@ function App() {
         default:
           break;
       }
-      
+
       return filtrados;
     } catch (e) {
       console.error("Error filtrando productos:", e);
@@ -154,10 +152,8 @@ function App() {
   useEffect(() => {
     setCargando(true);
     Promise.all([
-      // Línea 157
-      axios.get('https://proyecto-tienda-7anu.onrender.com/api/productos'),
-      // Línea 158
-      axios.get('https://proyecto-tienda-7anu.onrender.com/api/categorias')
+      axios.get(`${API_URL}/productos`),
+      axios.get(`${API_URL}/categorias`)
     ])
       .then(([prodRes, catRes]) => {
         if (Array.isArray(prodRes.data)) {
@@ -166,7 +162,6 @@ function App() {
         if (Array.isArray(catRes.data) && catRes.data.length > 0) {
           setCategorias([{ id_categoria: 'todas', descripcion: 'Todas' }, ...catRes.data]);
         } else {
-          // Fallback default categories
           setCategorias([
             { id_categoria: 'todas', descripcion: 'Todas' },
             { id_categoria: 'electronica', descripcion: 'Electrónica' },
@@ -202,7 +197,7 @@ function App() {
   useEffect(() => {
     const carruseles = [carrusel1Ref, carrusel2Ref, carrusel3Ref, carrusel4Ref, carrusel5Ref, carrusel6Ref];
     let intervals = [];
-    
+
     const startAutoSlide = () => {
       intervals = carruseles.map((ref, idx) => {
         return setInterval(() => {
@@ -218,7 +213,7 @@ function App() {
         }, 4000 + idx * 1000);
       });
     };
-    
+
     startAutoSlide();
     return () => intervals.forEach(clearInterval);
   }, []);
@@ -234,7 +229,7 @@ function App() {
   useEffect(() => {
     let intervalo;
     let timeoutId;
-    
+
     if (mostrarPagoYape && idVentaPendiente) {
       timeoutId = setTimeout(() => {
         clearInterval(intervalo);
@@ -245,9 +240,11 @@ function App() {
 
       intervalo = setInterval(async () => {
         try {
-          const res = await axios.get(`http://localhost:3001/api/estado-pago/${idVentaPendiente}?t=${new Date().getTime()}`);
+          const res = await axios.get(
+            `${API_URL}/estado-pago/${idVentaPendiente}?t=${new Date().getTime()}`
+          );
           const estadoPago = (res.data.estado || '').toString().toLowerCase();
-          
+
           if (estadoPago.includes('pagado') || estadoPago.includes('completado')) {
             clearInterval(intervalo);
             clearTimeout(timeoutId);
@@ -271,7 +268,7 @@ function App() {
         }
       }, 3000);
     }
-    
+
     return () => {
       clearInterval(intervalo);
       clearTimeout(timeoutId);
@@ -281,16 +278,16 @@ function App() {
   const agregarAlCarrito = (producto, cantidad = cantidadSeleccionada) => {
     const existe = carrito.find(item => item.id_producto === producto.id_producto);
     if (existe) {
-      setCarrito(carrito.map(item => 
-        item.id_producto === producto.id_producto 
-          ? { ...existe, cantidad: existe.cantidad + cantidad } 
+      setCarrito(carrito.map(item =>
+        item.id_producto === producto.id_producto
+          ? { ...existe, cantidad: existe.cantidad + cantidad }
           : item
       ));
     } else {
       setCarrito([...carrito, { ...producto, cantidad }]);
     }
     setProductoSeleccionado(null);
-    setMostrarCarrito(true); 
+    setMostrarCarrito(true);
     setCantidadSeleccionada(1);
   };
 
@@ -330,7 +327,7 @@ function App() {
 
   const validarFormulario = () => {
     const errores = {};
-    
+
     if (!datosComprador.nombre.trim()) errores.nombre = 'El nombre es obligatorio';
     if (!datosComprador.email.trim()) errores.email = 'El email es obligatorio';
     else if (!/\S+@\S+\.\S+/.test(datosComprador.email)) errores.email = 'Email inválido';
@@ -338,7 +335,7 @@ function App() {
     else if (!/^\d{9}$/.test(datosComprador.telefono.replace(/\s/g, ''))) errores.telefono = 'Ingresa 9 dígitos';
     if (!datosComprador.dni.trim()) errores.dni = 'El DNI es obligatorio';
     else if (!/^\d{8}$/.test(datosComprador.dni)) errores.dni = 'DNI debe tener 8 dígitos';
-    
+
     setErroresForm(errores);
     return Object.keys(errores).length === 0;
   };
@@ -352,14 +349,14 @@ function App() {
     }, 4000);
   };
 
-  // Auth functions
+  // ─── AUTH FUNCTIONS ────────────────────────────────────────────────────────
   const handleLogin = async (e) => {
     e.preventDefault();
     const email = e.target.email.value;
     const password = e.target.password.value;
-    
+
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/login', { email, password });
+      const res = await axios.post(`${API_URL}/auth/login`, { email, password });
       if (res.data.success) {
         setUsuario(res.data.usuario);
         localStorage.setItem('usuario-yape', JSON.stringify(res.data.usuario));
@@ -381,9 +378,9 @@ function App() {
       password: e.target.password.value,
       direccion: e.target.direccion?.value || ''
     };
-    
+
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/registrar', datos);
+      const res = await axios.post(`${API_URL}/auth/registrar`, datos);
       if (res.data.success) {
         setUsuario(res.data.usuario);
         localStorage.setItem('usuario-yape', JSON.stringify(res.data.usuario));
@@ -409,7 +406,7 @@ function App() {
     }
     try {
       console.log('Cargando pedidos para cliente:', usuario.id_cliente);
-      const res = await axios.get(`http://localhost:3001/api/pedidos/${usuario.id_cliente}`);
+      const res = await axios.get(`${API_URL}/pedidos/${usuario.id_cliente}`);
       console.log('Respuesta pedidos:', res.data);
       if (res.data && res.data.pedidos) {
         setMisPedidos(res.data.pedidos);
@@ -424,7 +421,9 @@ function App() {
 
   const cargarDetallePedido = async (idVenta) => {
     try {
-      const res = await axios.get(`http://localhost:3001/api/pedidos/detalle/${idVenta}?idCliente=${usuario.id_cliente}`);
+      const res = await axios.get(
+        `${API_URL}/pedidos/detalle/${idVenta}?idCliente=${usuario.id_cliente}`
+      );
       if (res.data.success) {
         setPedidoSeleccionado(res.data.pedido);
       }
@@ -454,7 +453,7 @@ function App() {
   const guardarPerfil = async () => {
     setGuardandoPerfil(true);
     try {
-      const res = await axios.put(`http://localhost:3001/api/auth/perfil/${usuario.id_cliente}`, {
+      const res = await axios.put(`${API_URL}/auth/perfil/${usuario.id_cliente}`, {
         nombres: datosPerfil.nombres,
         apellidos: datosPerfil.apellidos,
         telefono: datosPerfil.telefono,
@@ -474,8 +473,7 @@ function App() {
     }
   };
 
-const iniciarCompra = async () => {
-    // Verificar si el usuario está logueado
+  const iniciarCompra = async () => {
     if (!usuario) {
       showNotification('Por favor, inicia sesión para continuar', 'warning');
       setModoAuth('login');
@@ -483,7 +481,6 @@ const iniciarCompra = async () => {
       return;
     }
 
-    // Validar campos requeridos
     const errores = {};
     if (!datosComprador.nombres?.trim()) errores.nombres = 'Nombres requeridos';
     if (!datosComprador.apellidos?.trim()) errores.apellidos = 'Apellidos requeridos';
@@ -492,22 +489,21 @@ const iniciarCompra = async () => {
     if (!departamento) errores.departamento = 'Selecciona un departamento';
     if (!provincia) errores.provincia = 'Selecciona una provincia';
     if (!distrito) errores.distrito = 'Selecciona un distrito';
-    
+
     if (Object.keys(errores).length > 0) {
       setErroresForm(errores);
       return;
     }
-    
+
     setMostrarFormEnvio(false);
     setCargandoPago(true);
     setErrorPago(null);
-    
+
     try {
       console.log('Iniciando compra, total:', calcularTotal());
-      
-      // Primero crear la venta como pendiente y mostrar modal
-      const res = await axios.post('http://localhost:3001/api/comprar', { 
-        carrito, 
+
+      const res = await axios.post(`${API_URL}/comprar`, {
+        carrito,
         total: calcularTotal(),
         idCliente: usuario?.id_cliente,
         comprador: {
@@ -520,9 +516,9 @@ const iniciarCompra = async () => {
           distrito
         }
       });
-      
+
       console.log('Respuesta comprar:', res.data);
-      
+
       if (res.data && res.data.idVenta) {
         setIdVentaPendiente(res.data.idVenta);
         setPasoCheckout(2);
@@ -540,25 +536,24 @@ const iniciarCompra = async () => {
 
   const confirmarEnvio = async () => {
     const errores = {};
-    
+
     if (!datosComprador.direccion.trim()) errores.direccion = 'La dirección es obligatoria';
     if (!departamento) errores.departamento = 'Selecciona un departamento';
     if (!provincia) errores.provincia = 'Selecciona una provincia';
     if (!distrito) errores.distrito = 'Selecciona un distrito';
-    
+
     if (Object.keys(errores).length > 0) {
       setErroresForm(errores);
       return;
     }
-    
+
     setMostrarFormEnvio(false);
     setCargandoPago(true);
     setErrorPago(null);
-    
+
     try {
-      // Primero crear la venta como pendiente y mostrar modal
-      const res = await axios.post('http://localhost:3001/api/comprar', { 
-        carrito, 
+      const res = await axios.post(`${API_URL}/comprar`, {
+        carrito,
         total: calcularTotal(),
         idCliente: usuario?.id_cliente,
         comprador: {
@@ -571,7 +566,7 @@ const iniciarCompra = async () => {
           distrito
         }
       });
-      
+
       if (res.data && res.data.idVenta) {
         setIdVentaPendiente(res.data.idVenta);
         setPasoCheckout(2);
@@ -591,32 +586,30 @@ const iniciarCompra = async () => {
     console.log('Confirmando pago, idVenta:', idVentaPendiente);
     setCargandoPago(true);
     setErrorPago(null);
-    
+
     try {
       if (!idVentaPendiente) {
         throw new Error('No hay orden pendiente');
       }
-      
-      // Procesar pago pasando el ID de la venta pendiente
-      const res = await axios.post('http://localhost:3001/api/pagar-ficticio', {
+
+      const res = await axios.post(`${API_URL}/pagar-ficticio`, {
         idVenta: idVentaPendiente
       });
-      
+
       console.log('Respuesta pagar-ficticio:', res.data);
-      
+
       if (res.data && res.data.success) {
-        // Cerrar modal
         setMostrarPagoYape(false);
         setIdVentaPendiente(null);
-        
-        // Limpiar carrito
+
         setCarrito([]);
         localStorage.removeItem('carrito-yape');
-        
-        // Mostrar éxito
-        showNotification(`¡Pago procesado exitosamente!\n\nNúmero de orden: ${res.data.idVenta}`, 'success');
-        
-        // Resetear formulario
+
+        showNotification(
+          `¡Pago procesado exitosamente!\n\nNúmero de orden: ${res.data.idVenta}`,
+          'success'
+        );
+
         setPasoCheckout(0);
         setDatosComprador({
           nombres: '',
@@ -690,13 +683,26 @@ const iniciarCompra = async () => {
     }
   };
 
-  // Función auxiliar para renderizar tarjetas estilo Mercado Libre
+  // ─── RENDER TARJETA ────────────────────────────────────────────────────────
+  // Si la imagen no empieza con "http", se asume que es una ruta local del
+  // servidor y se le antepone la URL base del backend en Render.
+  const BACKEND_BASE = 'https://proyecto-tienda-7anu.onrender.com';
+
+  const resolverImagen = (imagen_url) => {
+    if (!imagen_url) return `${BACKEND_BASE}/uploads/sponsors/logos/default.png`;
+    if (imagen_url.startsWith('http://') || imagen_url.startsWith('https://')) {
+      return imagen_url;
+    }
+    // Ruta local del servidor → anteponer base del backend
+    return `${BACKEND_BASE}${imagen_url.startsWith('/') ? '' : '/'}${imagen_url}`;
+  };
+
   const renderTarjetaMercadoLibre = (prod) => {
-    const rutaImagen = prod.imagen_url || '/uploads/sponsors/logos/default.png';
+    const rutaImagen = resolverImagen(prod.imagen_url);
     const precioBase = Number(prod.precio) || 1;
     const descuento = ((prod.id_producto * 7) % 40) + 50;
     const precioOriginal = (precioBase / (1 - descuento / 100)).toFixed(2);
-    
+
     return (
       <div key={prod.id_producto} className="card-meli" onClick={() => setProductoSeleccionado(prod)}>
         <div className="card-meli-img">
@@ -718,25 +724,24 @@ const iniciarCompra = async () => {
     );
   };
 
-  // Función para "Ver más"
   const verMasCategoria = (categoria) => {
     showNotification(`Sección "${categoria}" próxima implementación`, 'info');
   };
 
   return (
     <div className="store-container">
-      {/* Header Moder */}
+      {/* Header */}
       <header className="store-header">
         <div className="header-top">
           <div className="logo-container">
             <h1 className="logo">JHORDCH-JO</h1>
             <span className="envio-gratis-badge"><i className="bi bi-truck"></i> Envío gratis</span>
           </div>
-           
+
           <div className="search-bar">
-            <input 
-              type="text" 
-              placeholder="Buscar productos..." 
+            <input
+              type="text"
+              placeholder="Buscar productos..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
@@ -772,10 +777,10 @@ const iniciarCompra = async () => {
             {categoriasConProductos.map(cat => {
               const catId = cat.id_categoria || cat.id;
               const catNombre = cat.descripcion || cat.nombre;
-              const isActive = String(categoriaActiva) === String(catId) || 
-                              (categoriaActiva === 'todas' && catId === 'todas');
+              const isActive = String(categoriaActiva) === String(catId) ||
+                (categoriaActiva === 'todas' && catId === 'todas');
               return (
-                <button 
+                <button
                   key={catId}
                   className={`cat-btn ${isActive ? 'active' : ''}`}
                   onClick={() => setCategoriaActiva(catId)}
@@ -841,7 +846,7 @@ const iniciarCompra = async () => {
         </div>
       </div>
 
-       {/* Loading State */}
+      {/* Loading State */}
       {cargando && (
         <div className="loading-productos">
           <div className="spinner-grande"></div>
@@ -852,154 +857,111 @@ const iniciarCompra = async () => {
       {/* Catálogo Dinámico */}
       {!cargando && (
         <>
-          {/* SI categoriaActiva === 'todas' Y búsqueda vacía: Mostrar secciones con carruseles */}
           {String(categoriaActiva).toLowerCase() === 'todas' && !busqueda && (
             <div className="mercado-secciones">
-              {/* Sección 1: Relacionado con tus visitas */}
               <section className="seccion-categoria">
                 <div className="seccion-header">
                   <h2>Relacionado con tus visitas</h2>
                   <button className="ver-mas" onClick={() => verMasCategoria('Relacionado con tus visitas')}>Ver más</button>
                 </div>
                 <div className="carrusel-contenedor">
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-izq" 
-                    onClick={() => deslizarCarrusel(carrusel1Ref, -1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-izq" onClick={() => deslizarCarrusel(carrusel1Ref, -1)}>
                     <i className="bi bi-chevron-left"></i>
                   </button>
                   <div ref={carrusel1Ref} className="carrusel-horizontal">
                     {productos.slice(0, 10).map(prod => renderTarjetaMercadoLibre(prod))}
                   </div>
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-der" 
-                    onClick={() => deslizarCarrusel(carrusel1Ref, 1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-der" onClick={() => deslizarCarrusel(carrusel1Ref, 1)}>
                     <i className="bi bi-chevron-right"></i>
                   </button>
                 </div>
               </section>
 
-              {/* Sección 2: Elegidos para ti */}
               <section className="seccion-categoria">
                 <div className="seccion-header">
                   <h2>Elegidos para ti</h2>
                   <button className="ver-mas" onClick={() => verMasCategoria('Elegidos para ti')}>Ver más</button>
                 </div>
                 <div className="carrusel-contenedor">
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-izq" 
-                    onClick={() => deslizarCarrusel(carrusel2Ref, -1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-izq" onClick={() => deslizarCarrusel(carrusel2Ref, -1)}>
                     <i className="bi bi-chevron-left"></i>
                   </button>
                   <div ref={carrusel2Ref} className="carrusel-horizontal">
                     {productos.slice(10, 20).map(prod => renderTarjetaMercadoLibre(prod))}
                   </div>
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-der" 
-                    onClick={() => deslizarCarrusel(carrusel2Ref, 1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-der" onClick={() => deslizarCarrusel(carrusel2Ref, 1)}>
                     <i className="bi bi-chevron-right"></i>
                   </button>
                 </div>
               </section>
 
-              {/* Sección 3: Inspirado en tus favoritos */}
               <section className="seccion-categoria">
                 <div className="seccion-header">
                   <h2>Inspirado en tus favoritos</h2>
                   <button className="ver-mas" onClick={() => verMasCategoria('Inspirado en tus favoritos')}>Ver más</button>
                 </div>
                 <div className="carrusel-contenedor">
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-izq" 
-                    onClick={() => deslizarCarrusel(carrusel3Ref, -1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-izq" onClick={() => deslizarCarrusel(carrusel3Ref, -1)}>
                     <i className="bi bi-chevron-left"></i>
                   </button>
                   <div ref={carrusel3Ref} className="carrusel-horizontal">
                     {productos.slice(20, 30).map(prod => renderTarjetaMercadoLibre(prod))}
                   </div>
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-der" 
-                    onClick={() => deslizarCarrusel(carrusel3Ref, 1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-der" onClick={() => deslizarCarrusel(carrusel3Ref, 1)}>
                     <i className="bi bi-chevron-right"></i>
                   </button>
                 </div>
               </section>
 
-              {/* Sección 4: Ofertas de la semana */}
               <section className="seccion-categoria seccion-ofertas">
                 <div className="seccion-header">
                   <h2><i className="bi bi-lightning-charge-fill"></i> Ofertas de la Semana</h2>
                   <button className="ver-mas" onClick={() => verMasCategoria('Ofertas')}>Ver todas</button>
                 </div>
                 <div className="carrusel-contenedor">
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-izq" 
-                    onClick={() => deslizarCarrusel(carrusel4Ref, -1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-izq" onClick={() => deslizarCarrusel(carrusel4Ref, -1)}>
                     <i className="bi bi-chevron-left"></i>
                   </button>
                   <div ref={carrusel4Ref} className="carrusel-horizontal">
                     {[...productos].reverse().slice(0, 8).map(prod => renderTarjetaMercadoLibre(prod))}
                   </div>
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-der" 
-                    onClick={() => deslizarCarrusel(carrusel4Ref, 1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-der" onClick={() => deslizarCarrusel(carrusel4Ref, 1)}>
                     <i className="bi bi-chevron-right"></i>
                   </button>
                 </div>
               </section>
 
-              {/* Sección 5: Productos más vendidos */}
               <section className="seccion-categoria">
                 <div className="seccion-header">
                   <h2><i className="bi bi-graph-up-arrow"></i> Más Vendidos</h2>
                   <button className="ver-mas" onClick={() => verMasCategoria('Populares')}>Ver ranking</button>
                 </div>
                 <div className="carrusel-contenedor">
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-izq" 
-                    onClick={() => deslizarCarrusel(carrusel5Ref, -1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-izq" onClick={() => deslizarCarrusel(carrusel5Ref, -1)}>
                     <i className="bi bi-chevron-left"></i>
                   </button>
                   <div ref={carrusel5Ref} className="carrusel-horizontal">
                     {productos.slice(5, 15).map(prod => renderTarjetaMercadoLibre(prod))}
                   </div>
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-der" 
-                    onClick={() => deslizarCarrusel(carrusel5Ref, 1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-der" onClick={() => deslizarCarrusel(carrusel5Ref, 1)}>
                     <i className="bi bi-chevron-right"></i>
                   </button>
                 </div>
               </section>
 
-              {/* Sección 6: Nuevos ingresos */}
               <section className="seccion-categoria">
                 <div className="seccion-header">
                   <h2><i className="bi bi-stars"></i> Nuevos Ingresos</h2>
                   <button className="ver-mas" onClick={() => verMasCategoria('Nuevos')}>Ver más</button>
                 </div>
                 <div className="carrusel-contenedor">
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-izq" 
-                    onClick={() => deslizarCarrusel(carrusel6Ref, -1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-izq" onClick={() => deslizarCarrusel(carrusel6Ref, -1)}>
                     <i className="bi bi-chevron-left"></i>
                   </button>
                   <div ref={carrusel6Ref} className="carrusel-horizontal">
                     {productos.slice(30, 40).map(prod => renderTarjetaMercadoLibre(prod))}
                   </div>
-                  <button 
-                    className="carrusel-flecha carrusel-flecha-der" 
-                    onClick={() => deslizarCarrusel(carrusel6Ref, 1)}
-                  >
+                  <button className="carrusel-flecha carrusel-flecha-der" onClick={() => deslizarCarrusel(carrusel6Ref, 1)}>
                     <i className="bi bi-chevron-right"></i>
                   </button>
                 </div>
@@ -1007,7 +969,6 @@ const iniciarCompra = async () => {
             </div>
           )}
 
-          {/* SI NO (hay una categoría específica o búsqueda activa): Mostrar grilla simple */}
           {(String(categoriaActiva).toLowerCase() !== 'todas' || busqueda) && (
             <div className="grilla-simple">
               {productosFiltrados.length === 0 ? (
@@ -1046,33 +1007,33 @@ const iniciarCompra = async () => {
               <i className="bi bi-x-lg"></i>
             </button>
             <div className="modal-img-wrapper">
-              <img src={productoSeleccionado.imagen_url || '/uploads/sponsors/logos/default.png'} alt="Producto" />
+              <img src={resolverImagen(productoSeleccionado.imagen_url)} alt="Producto" />
             </div>
             <div className="modal-info">
               {(() => {
-                  const precioBase = Number(productoSeleccionado.precio) || 1;
-                  const descuento = ((productoSeleccionado.id_producto * 7) % 40) + 50;
-                  const precioOriginal = (precioBase / (1 - descuento / 100)).toFixed(2);
-                  const ahorro = (precioOriginal - precioBase).toFixed(2);
-                  return (
-                    <>
-                      <div className="modal-badges">
-                        <span className="badge-modal">-{descuento}%</span>
-                        <span className="badge-modal flash"><i className="bi bi-lightning-charge-fill"></i> Oferta Flash</span>
+                const precioBase = Number(productoSeleccionado.precio) || 1;
+                const descuento = ((productoSeleccionado.id_producto * 7) % 40) + 50;
+                const precioOriginal = (precioBase / (1 - descuento / 100)).toFixed(2);
+                const ahorro = (precioOriginal - precioBase).toFixed(2);
+                return (
+                  <>
+                    <div className="modal-badges">
+                      <span className="badge-modal">-{descuento}%</span>
+                      <span className="badge-modal flash"><i className="bi bi-lightning-charge-fill"></i> Oferta Flash</span>
+                    </div>
+                    <h2>{productoSeleccionado.nombre}</h2>
+                    <p className="descripcion">{productoSeleccionado.descripcion}</p>
+
+                    <div className="precio-destacado-container">
+                      <div className="precio-row">
+                        <span className="precio-gigante">S/ {precioBase.toFixed(2)}</span>
+                        <span className="precio-tachado-modal">S/ {precioOriginal}</span>
                       </div>
-                      <h2>{productoSeleccionado.nombre}</h2>
-                      <p className="descripcion">{productoSeleccionado.descripcion}</p>
-                      
-                      <div className="precio-destacado-container">
-                        <div className="precio-row">
-                          <span className="precio-gigante">S/ {precioBase.toFixed(2)}</span>
-                          <span className="precio-tachado-modal">S/ {precioOriginal}</span>
-                        </div>
-                        <span className="ahorro">Ahorras S/ {ahorro}</span>
-                      </div>
-                    </>
-                  );
-                })()}
+                      <span className="ahorro">Ahorras S/ {ahorro}</span>
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className="envio-modal">
                 <span><i className="bi bi-truck"></i> Envío gratis</span>
@@ -1082,13 +1043,9 @@ const iniciarCompra = async () => {
               <div className="cantidad-selector-modal">
                 <span className="label-cantidad">Cantidad:</span>
                 <div className="control-cantidad">
-                  <button onClick={() => setCantidadSeleccionada(Math.max(1, cantidadSeleccionada - 1))}>
-                    -
-                  </button>
+                  <button onClick={() => setCantidadSeleccionada(Math.max(1, cantidadSeleccionada - 1))}>-</button>
                   <span>{cantidadSeleccionada}</span>
-                  <button onClick={() => setCantidadSeleccionada(cantidadSeleccionada + 1)}>
-                    +
-                  </button>
+                  <button onClick={() => setCantidadSeleccionada(cantidadSeleccionada + 1)}>+</button>
                 </div>
               </div>
 
@@ -1113,7 +1070,7 @@ const iniciarCompra = async () => {
               <i className="bi bi-x-lg"></i>
             </button>
           </div>
-          
+
           {pasoCheckout === 1 && (
             <>
               <div className="carrito-header-actions">
@@ -1136,7 +1093,7 @@ const iniciarCompra = async () => {
                   const precioItem = Number(item.precio) || 1;
                   return (
                     <div key={item.id_producto} className="item-sidebar">
-                      <img src={item.imagen_url || '/uploads/sponsors/logos/default.png'} alt={item.nombre} />
+                      <img src={resolverImagen(item.imagen_url)} alt={item.nombre} />
                       <div className="item-detalles">
                         <p className="item-nombre">{item.nombre}</p>
                         <div className="item-precio-row">
@@ -1145,13 +1102,9 @@ const iniciarCompra = async () => {
                         </div>
                         <div className="item-controles">
                           <div className="cantidad-mini-control">
-                            <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad - 1)}>
-                              -
-                            </button>
+                            <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad - 1)}>-</button>
                             <span>{item.cantidad}</span>
-                            <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad + 1)}>
-                              +
-                            </button>
+                            <button onClick={() => actualizarCantidad(item.id_producto, item.cantidad + 1)}>+</button>
                           </div>
                           <button className="btn-eliminar" onClick={() => eliminarDelCarrito(item.id_producto)}>
                             Eliminar
@@ -1179,7 +1132,7 @@ const iniciarCompra = async () => {
           {pasoCheckout === 2 && (
             <div className="form-checkout">
               <div className="form-section-title">Datos Personales</div>
-              
+
               <div className="form-grupo">
                 <label>Nombres <span className="required">*</span></label>
                 <input
@@ -1253,7 +1206,7 @@ const iniciarCompra = async () => {
 
               <div className="form-grupo">
                 <label>Departamento <span className="required">*</span></label>
-                <select 
+                <select
                   name="departamento"
                   value={departamento}
                   onChange={handleEnvioChange}
@@ -1270,7 +1223,7 @@ const iniciarCompra = async () => {
               {departamento && (
                 <div className="form-grupo">
                   <label>Provincia <span className="required">*</span></label>
-                  <select 
+                  <select
                     name="provincia"
                     value={provincia}
                     onChange={handleEnvioChange}
@@ -1288,7 +1241,7 @@ const iniciarCompra = async () => {
               {provincia && (
                 <div className="form-grupo">
                   <label>Distrito <span className="required">*</span></label>
-                  <select 
+                  <select
                     name="distrito"
                     value={distrito}
                     onChange={handleEnvioChange}
@@ -1313,8 +1266,8 @@ const iniciarCompra = async () => {
                 <button className="btn-volver" onClick={() => setPasoCheckout(1)}>
                   ← Volver
                 </button>
-                <button 
-                  className="btn-pagar-yape" 
+                <button
+                  className="btn-pagar-yape"
                   onClick={iniciarCompra}
                   disabled={cargandoPago}
                 >
@@ -1337,7 +1290,7 @@ const iniciarCompra = async () => {
             }}>
               <i className="bi bi-x-lg"></i>
             </button>
-            
+
             <div className="yape-header-modern">
               <div className="yape-logo-modern">
                 <div className="yape-icon-circle">
@@ -1363,9 +1316,9 @@ const iniciarCompra = async () => {
             <div className="yape-qr-section">
               <div className="qr-frame-modern">
                 <div className="qr-glow"></div>
-<img 
-                  src="/qr-yape.jpeg" 
-                  alt="QR Yape" 
+                <img
+                  src="/qr-yape.jpeg"
+                  alt="QR Yape"
                   className="qr-image-modern"
                 />
               </div>
@@ -1377,23 +1330,17 @@ const iniciarCompra = async () => {
 
             <div className="yape-steps-modern">
               <div className="step-modern active">
-                <div className="step-icon-modern">
-                  <i className="bi bi-phone"></i>
-                </div>
+                <div className="step-icon-modern"><i className="bi bi-phone"></i></div>
                 <span>Abrir App</span>
               </div>
               <div className="step-connector"></div>
               <div className="step-modern">
-                <div className="step-icon-modern">
-                  <i className="bi bi-qr-code-scan"></i>
-                </div>
+                <div className="step-icon-modern"><i className="bi bi-qr-code-scan"></i></div>
                 <span>Escanear</span>
               </div>
               <div className="step-connector"></div>
               <div className="step-modern">
-                <div className="step-icon-modern">
-                  <i className="bi bi-check2-circle"></i>
-                </div>
+                <div className="step-icon-modern"><i className="bi bi-check2-circle"></i></div>
                 <span>Confirmar</span>
               </div>
             </div>
@@ -1403,8 +1350,8 @@ const iniciarCompra = async () => {
               <span className="loading-text">Verificando pago automáticamente...</span>
             </div>
 
-            <button 
-              className="btn-yape-pagado" 
+            <button
+              className="btn-yape-pagado"
               onClick={confirmarPagoYape}
               disabled={cargandoPago}
             >
@@ -1436,21 +1383,20 @@ const iniciarCompra = async () => {
             <button className="btn-cerrar" onClick={() => setMostrarFormEnvio(false)}>
               <i className="bi bi-x-lg"></i>
             </button>
-            
+
             <div className="envio-header">
               <h2><i className="bi bi-box-seam"></i> Datos de Envío</h2>
               <p className="envio-subtitle">Completa la información para el envío</p>
             </div>
 
             <div className="envio-body">
-              {/* Método de envío */}
               <div className="metodo-envio">
                 <h3>Método de envío</h3>
                 <div className="envio-opciones">
                   <label className={`envio-opcion ${metodoEnvio === 'estandar' ? 'active' : ''}`}>
-                    <input 
-                      type="radio" 
-                      name="metodoEnvio" 
+                    <input
+                      type="radio"
+                      name="metodoEnvio"
                       value="estandar"
                       checked={metodoEnvio === 'estandar'}
                       onChange={(e) => setMetodoEnvio(e.target.value)}
@@ -1464,11 +1410,11 @@ const iniciarCompra = async () => {
                       <span className="opcion-precio">Gratis</span>
                     </div>
                   </label>
-                  
+
                   <label className={`envio-opcion ${metodoEnvio === 'express' ? 'active' : ''}`}>
-                    <input 
-                      type="radio" 
-                      name="metodoEnvio" 
+                    <input
+                      type="radio"
+                      name="metodoEnvio"
                       value="express"
                       checked={metodoEnvio === 'express'}
                       onChange={(e) => setMetodoEnvio(e.target.value)}
@@ -1485,7 +1431,6 @@ const iniciarCompra = async () => {
                 </div>
               </div>
 
-              {/* Dirección completa */}
               <div className="form-grupo">
                 <label>Dirección completa *</label>
                 <textarea
@@ -1499,7 +1444,6 @@ const iniciarCompra = async () => {
                 {erroresForm.direccion && <span className="error-text">{erroresForm.direccion}</span>}
               </div>
 
-              {/* Ubicación */}
               <div className="ubicacion-grid">
                 <div className="form-grupo">
                   <label>Departamento *</label>
@@ -1567,7 +1511,6 @@ const iniciarCompra = async () => {
                 </div>
               </div>
 
-              {/* Referencia */}
               <div className="form-grupo">
                 <label>Referencia (opcional)</label>
                 <input
@@ -1579,7 +1522,6 @@ const iniciarCompra = async () => {
                 />
               </div>
 
-              {/* Código Postal */}
               <div className="form-row">
                 <div className="form-grupo">
                   <label>Código Postal</label>
@@ -1612,10 +1554,12 @@ const iniciarCompra = async () => {
             <div className="envio-footer">
               <div className="envio-resumen">
                 <span>Productos: {carrito.reduce((acc, i) => acc + i.cantidad, 0)}</span>
-                <span className="envio-total">Total: S/ {(calcularTotal() + (metodoEnvio === 'express' ? 15 : 0)).toFixed(2)}</span>
+                <span className="envio-total">
+                  Total: S/ {(calcularTotal() + (metodoEnvio === 'express' ? 15 : 0)).toFixed(2)}
+                </span>
               </div>
-              <button 
-                className="btn-confirmar-envio" 
+              <button
+                className="btn-confirmar-envio"
                 onClick={confirmarEnvio}
                 disabled={cargandoPago}
               >
@@ -1625,7 +1569,7 @@ const iniciarCompra = async () => {
           </div>
         </div>
       )}
-      
+
       {/* Modal de Auth */}
       {mostrarAuth && (
         <div className="modal-overlay" onClick={() => setMostrarAuth(false)}>
@@ -1633,7 +1577,7 @@ const iniciarCompra = async () => {
             <button className="btn-cerrar-modal" onClick={() => setMostrarAuth(false)}>
               <i className="bi bi-x-lg"></i>
             </button>
-            
+
             <div className="auth-header">
               <div className="auth-logo">
                 <span className="logo-yape">Y</span>
@@ -1683,7 +1627,7 @@ const iniciarCompra = async () => {
             <div className="auth-footer">
               <p>
                 {modoAuth === 'login' ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
-                <button 
+                <button
                   className="btn-switch-auth"
                   onClick={() => setModoAuth(modoAuth === 'login' ? 'register' : 'login')}
                 >
@@ -1747,17 +1691,17 @@ const iniciarCompra = async () => {
                       <div className="form-row">
                         <div className="form-grupo">
                           <label>Nombres</label>
-                          <input type="text" value={datosPerfil.nombres} onChange={(e) => setDatosPerfil({...datosPerfil, nombres: e.target.value})} />
+                          <input type="text" value={datosPerfil.nombres} onChange={(e) => setDatosPerfil({ ...datosPerfil, nombres: e.target.value })} />
                         </div>
                         <div className="form-grupo">
                           <label>Apellidos</label>
-                          <input type="text" value={datosPerfil.apellidos} onChange={(e) => setDatosPerfil({...datosPerfil, apellidos: e.target.value})} />
+                          <input type="text" value={datosPerfil.apellidos} onChange={(e) => setDatosPerfil({ ...datosPerfil, apellidos: e.target.value })} />
                         </div>
                       </div>
                       <div className="form-row">
                         <div className="form-grupo">
                           <label>Teléfono</label>
-                          <input type="tel" value={datosPerfil.telefono} onChange={(e) => setDatosPerfil({...datosPerfil, telefono: e.target.value})} maxLength="9" />
+                          <input type="tel" value={datosPerfil.telefono} onChange={(e) => setDatosPerfil({ ...datosPerfil, telefono: e.target.value })} maxLength="9" />
                         </div>
                         <div className="form-grupo">
                           <label>Email</label>
@@ -1766,7 +1710,7 @@ const iniciarCompra = async () => {
                       </div>
                       <div className="form-grupo">
                         <label>Dirección</label>
-                        <textarea value={datosPerfil.direccion} onChange={(e) => setDatosPerfil({...datosPerfil, direccion: e.target.value})} rows="2" />
+                        <textarea value={datosPerfil.direccion} onChange={(e) => setDatosPerfil({ ...datosPerfil, direccion: e.target.value })} rows="2" />
                       </div>
                       <div className="perfil-acciones">
                         <button className="btn-cancelar-edicion" onClick={() => { setEditandoPerfil(false); setDatosPerfil({ nombres: usuario.nombres, apellidos: usuario.apellidos, telefono: usuario.telefono, email: usuario.email, direccion: usuario.direccion }); }}>
@@ -1836,7 +1780,7 @@ const iniciarCompra = async () => {
                         <h4>Productos</h4>
                         {pedidoSeleccionado.detalles?.map((prod, idx) => (
                           <div key={idx} className="producto-pedido">
-                            <img src={prod.imagen_url || '/uploads/sponsors/logos/default.png'} alt={prod.nombre} />
+                            <img src={resolverImagen(prod.imagen_url)} alt={prod.nombre} />
                             <div className="producto-info">
                               <span className="producto-nombre">{prod.nombre}</span>
                               <span className="producto-cantidad">Cantidad: {prod.cantidad}</span>
@@ -1918,7 +1862,7 @@ const iniciarCompra = async () => {
             <div className="notificacion-content">
               <p>{notif.mensaje}</p>
             </div>
-            <button 
+            <button
               className="notificacion-close"
               onClick={() => setNotificaciones(prev => prev.filter(n => n.id !== notif.id))}
             >
