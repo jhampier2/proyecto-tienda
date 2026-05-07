@@ -154,8 +154,10 @@ function App() {
   useEffect(() => {
     setCargando(true);
     Promise.all([
-      axios.get('http://localhost:3001/api/productos'),
-      axios.get('http://localhost:3001/api/categorias')
+      // Línea 157
+      axios.get('https://proyecto-tienda-7anu.onrender.com/api/productos'),
+      // Línea 158
+      axios.get('https://proyecto-tienda-7anu.onrender.com/api/categorias')
     ])
       .then(([prodRes, catRes]) => {
         if (Array.isArray(prodRes.data)) {
