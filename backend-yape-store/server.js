@@ -21,7 +21,21 @@ app.get('/', (req, res) => {
     // Reemplaza el link de abajo por el link que te dé Render en el Static Site
     res.redirect('https://yape-store-web.onrender.com'); 
 });
+// Test de conexión inmediato al arrancar
+const db = require('./config/db'); // Ajusta la ruta si es necesario
 
+async function testConexion() {
+    try {
+        console.log("Intentando conectar a Aiven...");
+        const [rows] = await db.query('SELECT 1 + 1 AS result');
+        console.log("¡CONEXIÓN EXITOSA CON AIVEN! Resultado:", rows.result);
+    } catch (err) {
+        console.error("ERROR CRÍTICO DE CONEXIÓN:", err.message);
+        console.error("Código de error:", err.code);
+    }
+}
+
+testConexion();
 // Usar las rutas
 app.use('/api', apiRoutes);
 
